@@ -1,13 +1,16 @@
 class User
   include MongoMapper::Document
   include ActiveModel::SecurePassword
+  require 'digest/sha1'
 
   before_save { email.downcase! }
+  before_create :create_remember_token
   before_validation { self.email = email.downcase }
 
   key :name, 			String
   key :email, 			String, :required => true, :unique => true, :index => true
   key :password_digest,	String
+  key :remember_token, String, :index => true
   timestamps!
 
   validates :name, 	presence: true, length: { maximum: 50 }
@@ -17,4 +20,18 @@ class User
   					uniqueness: { case_sensitive: false }
   has_secure_password
   validates :password, length: { minimum: 6 }
+
+  def User.new_remember_token
+    SecureRandom.urlsafe_base64
+  end
+
+  def User.digest(token)
+    Digest::SHA1.hexdigest(token.to_s)
+  end
+
+  private
+
+    def create_remember_token
+      self.remember_token = User.digest(User.new_remember_token)
+    end
 end
